@@ -45,11 +45,26 @@ public class ImageController {
     //Also now you need to add the tags of an image in the Model type object
     //Here a list of tags is added in the Model type object
     //this list is then sent to 'images/image.html' file and the tags are displayed
-    @RequestMapping("/images/{title}")
-    public String showImage(@PathVariable("title") String title, Model model) {
-        Image image = imageService.getImageByTitle(title);
+    @RequestMapping("/images/{imageid}/{title}")
+    public String showImage(@PathVariable("title") String title, @PathVariable("imageid") Integer imageid, Model model) throws NullPointerException {
+       // Image image = imageService.getImageByTitle(title);
+        // modified search by imageid rather than title
+        // also, created comment model which contains info about the comments that which user commented and on which date.
+        // also, used primary key of image and user id as a foreign key in comment model
+        //handling the null tags in try/catch block
+        Image image = imageService.getImage(imageid);
         model.addAttribute("image", image);
-        model.addAttribute("tags", image.getTags());
+        model.addAttribute("comments", image.getComments());
+        try {
+            List<Tag> tags = image.getTags();
+            if (tags.isEmpty()) {
+                tags.add(new Tag());
+            }
+            model.addAttribute("tags", tags);
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            model.addAttribute("image", "");
+        }
         return "images/image";
     }
 
