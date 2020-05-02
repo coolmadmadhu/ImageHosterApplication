@@ -107,13 +107,22 @@ public class ImageController {
     //The method first needs to convert the list of all the tags to a string containing all the tags separated by a comma and then add this string in a Model type object
     //This string is then displayed by 'edit.html' file as previous tags of an image
     @RequestMapping(value = "/editImage")
-    public String editImage(@RequestParam("imageId") Integer imageId, Model model) {
+    public String editImage(@RequestParam("imageId") Integer imageId, Model model, HttpSession session) {
         Image image = imageService.getImage(imageId);
-
-        String tags = convertTagsToString(image.getTags());
-        model.addAttribute("image", image);
-        model.addAttribute("tags", tags);
-        return "images/edit";
+        User loggedInUser = (User) session.getAttribute("loggeduser");
+        User imageOwner = image.getUser();
+        List<Tag> tags = image.getTags();
+        if (loggedInUser.getId() == imageOwner.getId()) {
+            model.addAttribute("image", image);
+            model.addAttribute("tags", convertTagsToString(tags));
+            return "images/edit";
+        } else {
+            model.addAttribute("editError", "Only the owner of the image can edit the image");
+            model.addAttribute("image", image);
+            model.addAttribute("tags", tags);
+            model.addAttribute("comments", image.getComments());
+            return "images/image";
+        }
     }
 
     //This controller method is called when the request pattern is of type 'images/edit' and also the incoming request is of PUT type
@@ -147,7 +156,7 @@ public class ImageController {
         updatedImage.setDate(new Date());
 
         imageService.updateImage(updatedImage);
-        return "redirect:/images/" + updatedImage.getTitle();
+        return "redirect:/images/" + updatedImage.getId() + "/" + updatedImage.getTitle();
     }
 
 
@@ -155,11 +164,21 @@ public class ImageController {
     //The method calls the deleteImage() method in the business logic passing the id of the image to be deleted
     //Looks for a controller method with request mapping of type '/images'
     @RequestMapping(value = "/deleteImage", method = RequestMethod.DELETE)
-    public String deleteImageSubmit(@RequestParam(name = "imageId") Integer imageId) {
-        imageService.deleteImage(imageId);
-        return "redirect:/images";
+    public String deleteImageSubmit(@RequestParam(name = "imageId") Integer imageId, HttpSession session, Model model) {
+        User loggedInUser = (User) session.getAttribute("loggeduser");
+        Image currentImage = imageService.getImage(imageId);
+        User imageOwner = currentImage.getUser();
+        if (loggedInUser.getId() == imageOwner.getId()) {
+            imageService.deleteImage(imageId);
+            return "redirect:/images";
+        } else {
+            model.addAttribute("tags", currentImage.getTags());
+            model.addAttribute("image", currentImage);
+            model.addAttribute("deleteError", "Only the owner of the image can delete the image");
+            model.addAttribute("comments", currentImage.getComments());
+            return "images/image";
+        }
     }
-
 
     //This method converts the image to Base64 format
     private String convertUploadedFileToBase64(MultipartFile file) throws IOException {
